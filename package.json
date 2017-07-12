@@ -1,0 +1,15 @@
+{
+  "name": "material-icon-converter",
+  "version": "1.0.0",
+  "description": "Converts Material icon SVGs to Template Icon components",
+  "main": "generate-icons.js",
+  "dependencies": {
+    "lodash": "^4.17.4"
+  },
+  "scripts": {
+    "convert": "node generate-icons.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Marcus v. Keil",
+  "license": "ISC"
+}
