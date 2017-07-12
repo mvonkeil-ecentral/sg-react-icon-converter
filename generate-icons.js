@@ -1,19 +1,23 @@
+#!/usr/bin/env node
 /**
  * Converts material SVGs into Template icons.
  */
 
 const fs = require('fs');
+const path = require('path');
 const camelCase = require('lodash/camelCase');
-const replace = require('lodash/replace');
+const argv = require('minimist')(process.argv.slice(2));
 
-const inDir = './in';
-const outDir = './out';
+const moduleDir = __dirname;
+const inDir = argv.in || path.resolve('./in');
+const outDir = argv.out || path.resolve('./out');
 
-const templateFile = './template.jsx';
+const templateFile = argv.template || path.resolve(moduleDir, './template.jsx');
 
-String.prototype.replaceAll = function(search, replacement) {
-    var target = this;
-    return target.split(search).join(replacement);
+console.log(templateFile);
+
+const replaceAll = (string, search, replacement) => {
+    return string.split(search).join(replacement);
 };
 
 const variables = {
@@ -47,11 +51,10 @@ files.forEach( (file) => {
         return `${result}${item.trim()}`;
     }, '');
 
-    const src = template
-        .replaceAll(variables.svgContent, svgContent)
-        .replaceAll(variables.iconComponentName, iconComponentName)
-        .replaceAll(variables.iconHumanReadable, iconHumanReadable)
-        ;
+    let src = template;
+    src = replaceAll(src, variables.svgContent, svgContent);
+    src = replaceAll(src, variables.iconComponentName, iconComponentName);
+    src = replaceAll(src, variables.iconHumanReadable, iconHumanReadable);
 
     fs.writeFileSync(`${outDir}/${fileName}`, src);
 });
