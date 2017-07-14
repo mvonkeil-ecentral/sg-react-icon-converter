@@ -5,16 +5,35 @@
 
 const fs = require('fs');
 const path = require('path');
+const glob = require('glob');
 const camelCase = require('lodash/camelCase');
 const argv = require('minimist')(process.argv.slice(2));
 
 const moduleDir = __dirname;
-const inDir = argv.in || path.resolve('./in');
-const outDir = argv.out || path.resolve('./out');
 
-const templateFile = argv.template || path.resolve(moduleDir, './template.jsx');
+// The input file or glob pattern.
+const inDir = argv.in || './in/*.svg';
 
-console.log(templateFile);
+// The output directory.
+const outDir = argv.out || './out';
+
+const templateFile = argv.template || './template.jsx';
+
+const logMessage = argv.quiet ? () => {} : console.info;
+
+const isValid = () => {
+    if (!fs.existsSync(outDir)) {
+        console.error(`No such directory: ${outDir}`);
+        return false;
+    }
+
+    if (!fs.existsSync(templateFile)) {
+        console.error(`Cannot find template file: ${templateFile}`);
+        return false;
+    }
+
+    return true;
+};
 
 const replaceAll = (string, search, replacement) => {
     return string.split(search).join(replacement);
@@ -26,7 +45,12 @@ const variables = {
     iconHumanReadable: '#ICON_HUMAN_READABLE',
 };
 
-const files = fs.readdirSync( inDir );
+let pattern = inDir;
+if(fs.existsSync(inDir) &&  fs.statSync(inDir).isDirectory()) {
+  pattern = `${pattern}/*`;
+}
+
+const files = glob.sync(pattern);
 
 const template = fs.readFileSync(templateFile).toString();
 
@@ -34,6 +58,8 @@ String.prototype.replaceAll = function(search, replacement) {
     var target = this;
     return target.replace(new RegExp(search, 'g'), replacement);
 };
+
+let generated = 0;
 
 files.forEach( (file) => {
     const matches = file.match(/ic_([\w_]+)(_black.*)\.svg/);
@@ -46,7 +72,7 @@ files.forEach( (file) => {
 
     const fileName = `${iconComponentName}.jsx`;
 
-    const svgItems = fs.readFileSync(`${inDir}/${file}`).toString().replace(/<\s*[\/]?\s*svg[^>]*>/g, '').trim().split('\n');
+    const svgItems = fs.readFileSync(file).toString().replace(/<\s*[\/]?\s*svg[^>]*>/g, '').trim().split('\n');
     const svgContent = svgItems.reduce((result, item) => {
         return `${result}${item.trim()}`;
     }, '');
@@ -56,5 +82,24 @@ files.forEach( (file) => {
     src = replaceAll(src, variables.iconComponentName, iconComponentName);
     src = replaceAll(src, variables.iconHumanReadable, iconHumanReadable);
 
-    fs.writeFileSync(`${outDir}/${fileName}`, src);
+    const target = `${outDir}/${fileName}`;
+
+    if (fs.existsSync(target)) {
+      if (!argv.force) {
+        logMessage(`Skipping existing file '${iconComponentName}' (use --force to overwrite).`);
+        return;
+      }
+      else {
+        logMessage(`Overwriting existing icon component '${iconComponentName}'.`);
+        fs.unlinkSync(target);
+      }
+    }
+    else {
+      logMessage(`Generated icon component '${iconComponentName}'.`);
+    }
+
+    fs.writeFileSync(target, src);
+    generated += 1;
 });
+
+logMessage(`Generated ${generated} icon(s).`);
